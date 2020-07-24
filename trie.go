@@ -49,6 +49,11 @@ func (t *Trie) Root() *Node {
 	return t.root
 }
 
+// Returns the size of the trie.
+func (t *Trie) Size() int {
+	return t.size
+}
+
 // Adds the key to the Trie, including meta data. Meta data
 // is stored as `interface{}` and must be type cast by
 // the caller.
