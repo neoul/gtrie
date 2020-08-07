@@ -213,6 +213,53 @@ func TestPrefixSearch(t *testing.T) {
 	trie.PrefixSearch("fsfsdfasdf")
 }
 
+func TestTrie_FindLongestMatch(t *testing.T) {
+	trie := New()
+	expected := []string{
+		"foo",
+		"foosball",
+		"football",
+		"foreboding",
+		"forementioned",
+		"foretold",
+		"foreverandeverandeverandever",
+		"forbidden",
+		"ABC",
+	}
+
+	// defer func() {
+	// 	r := recover()
+	// 	if r != nil {
+	// 		t.Error(r)
+	// 	}
+	// }()
+
+	trie.Add("bar", nil)
+	for _, key := range expected {
+		trie.Add(key, nil)
+	}
+
+	tests := []struct {
+		input    string
+		expected string
+		ok       bool
+	}{
+		{"fooo", "foo", true},
+		{"foretoldme", "foretold", true},
+		{"abc", "", false},
+	}
+
+	for _, test := range tests {
+		t.Log("TEST", test.input)
+		output, ok := trie.FindLongestMatch(test.input)
+		if (test.ok != ok) || test.expected != output {
+			t.Errorf("Expected output %s for input %s", output, test.input)
+		}
+	}
+
+	trie.PrefixSearch("fsfsdfasdf")
+}
+
 func TestFuzzySearch(t *testing.T) {
 	setup := []string{
 		"foosball",

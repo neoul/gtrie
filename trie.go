@@ -152,6 +152,20 @@ func (t Trie) PrefixSearch(pre string) []string {
 	return collect(node)
 }
 
+// Find longest matched key in the trie
+func (t *Trie) FindLongestMatch(key string) (string, bool) {
+	node := findNodeLongestMatch(t.Root(), []rune(key))
+	if node == nil {
+		return "", false
+	}
+
+	node, ok := node.Children()[nul]
+	if !ok || !node.term {
+		return "", false
+	}
+	return node.path, true
+}
+
 // Creates and returns a pointer to a new child for the node.
 func (parent *Node) NewChild(val rune, path string, bitmask uint64, meta interface{}, term bool) *Node {
 	node := &Node{
@@ -207,6 +221,10 @@ func (n Node) Depth() int {
 	return n.depth
 }
 
+func (n Node) Key() string {
+	return n.path
+}
+
 // Returns a uint64 representing the current
 // mask of this node.
 func (n Node) Mask() uint64 {
@@ -235,6 +253,29 @@ func findNode(node *Node, runes []rune) *Node {
 	}
 
 	return findNode(n, nrunes)
+}
+
+func findNodeLongestMatch(node *Node, runes []rune) *Node {
+	if node == nil {
+		return nil
+	}
+
+	if len(runes) == 0 {
+		return node
+	}
+
+	n, ok := node.Children()[runes[0]]
+	if !ok {
+		return node
+	}
+
+	var nrunes []rune
+	if len(runes) > 1 {
+		nrunes = runes[1:]
+	} else {
+		nrunes = runes[0:0]
+	}
+	return findNodeLongestMatch(n, nrunes)
 }
 
 func maskruneslice(rs []rune) uint64 {
