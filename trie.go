@@ -1,7 +1,7 @@
-// Implementation of an R-Way Trie data structure.
+// Package trie is Implementation of an R-Way Trie data structure.
 //
-// A Trie has a root Node which is the base of the tree.
-// Each subsequent Node has a letter and children, which are
+// A Trie has a root trieNode which is the base of the tree.
+// Each subsequent trieNode has a letter and children, which are
 // nodes that have letter values associated with them.
 package trie
 
@@ -10,24 +10,27 @@ import (
 	"sync"
 )
 
-type Node struct {
+// node structure of the R-Way Trie
+type trieNode struct {
 	val       rune
 	path      string
 	term      bool
 	depth     int
 	meta      interface{}
 	mask      uint64
-	parent    *Node
-	children  map[rune]*Node
+	parent    *trieNode
+	children  map[rune]*trieNode
 	termCount int
 }
 
+// Trie for control
 type Trie struct {
 	mu   sync.Mutex
-	root *Node
+	root *trieNode
 	size int
 }
 
+// ByKeys for fuzzy search
 type ByKeys []string
 
 func (a ByKeys) Len() int           { return len(a) }
@@ -36,28 +39,23 @@ func (a ByKeys) Less(i, j int) bool { return len(a[i]) < len(a[j]) }
 
 const nul = 0x0
 
-// Creates a new Trie with an initialized root Node.
+// New creates a new Trie with an initialized root trieNode.
 func New() *Trie {
 	return &Trie{
-		root: &Node{children: make(map[rune]*Node), depth: 0},
+		root: &trieNode{children: make(map[rune]*trieNode), depth: 0},
 		size: 0,
 	}
 }
 
-// Returns the root node for the Trie.
-func (t *Trie) Root() *Node {
-	return t.root
-}
-
-// Returns the size of the trie.
+// Size returns the size of the trie.
 func (t *Trie) Size() int {
 	return t.size
 }
 
-// Adds the key to the Trie, including meta data. Meta data
+// Add adds the key to the Trie, including meta data. Meta data
 // is stored as `interface{}` and must be type cast by
 // the caller.
-func (t *Trie) Add(key string, meta interface{}) *Node {
+func (t *Trie) Add(key string, meta interface{}) {
 	t.mu.Lock()
 
 	t.size++
@@ -73,78 +71,96 @@ func (t *Trie) Add(key string, meta interface{}) *Node {
 			node = n
 			node.mask |= bitmask
 		} else {
-			node = node.NewChild(r, "", bitmask, nil, false)
+			node = node.newChild(r, "", bitmask, nil, false)
 		}
 		node.termCount++
 	}
-	node = node.NewChild(nul, key, 0, meta, true)
+	node = node.newChild(nul, key, 0, meta, true)
 	t.mu.Unlock()
-
-	return node
 }
 
-// Finds and returns meta data associated
-// with `key`.
-func (t *Trie) Find(key string) (*Node, bool) {
-	node := findNode(t.Root(), []rune(key))
+// Find finds and returns meta data associated with `key`.
+func (t *Trie) Find(key string) (interface{}, bool) {
+	node := findNode(t.root, []rune(key))
 	if node == nil {
 		return nil, false
 	}
 
-	node, ok := node.Children()[nul]
+	node, ok := node.children[nul]
 	if !ok || !node.term {
 		return nil, false
 	}
 
-	return node, true
+	return node.meta, true
 }
 
+// HasKeysWithPrefix returns true if there is a key started with the prefix.
 func (t *Trie) HasKeysWithPrefix(key string) bool {
-	node := findNode(t.Root(), []rune(key))
+	node := findNode(t.root, []rune(key))
 	return node != nil
 }
 
-// Removes a key from the trie, ensuring that
+// Remove removes a key from the trie, ensuring that
 // all bitmasks up to root are appropriately recalculated.
 func (t *Trie) Remove(key string) {
 	var (
 		i    int
 		rs   = []rune(key)
-		node = findNode(t.Root(), []rune(key))
+		node = findNode(t.root, []rune(key))
 	)
 	t.mu.Lock()
 
 	t.size--
-	for n := node.Parent(); n != nil; n = n.Parent() {
+	for n := node.parent; n != nil; n = n.parent {
 		i++
-		if len(n.Children()) > 1 {
+		if len(n.children) > 1 {
 			r := rs[len(rs)-i]
-			n.RemoveChild(r)
+			n.removeChild(r)
 			break
 		}
 	}
 	t.mu.Unlock()
 }
 
-// Returns all the keys currently stored in the trie.
-func (t *Trie) Keys() []string {
+// Keys returns all the keys currently stored and started with the pre(fix) in the trie.
+func (t *Trie) Keys(pre string) []string {
 	if t.size == 0 {
 		return []string{}
 	}
 
-	return t.PrefixSearch("")
+	return t.PrefixSearch(pre)
 }
 
-// Performs a fuzzy search against the keys in the trie.
+// Values returns all values that have a key started with the pre(fix).
+func (t *Trie) Values(pre string) []interface{} {
+	node := findNode(t.root, []rune(pre))
+	if node == nil {
+		return nil
+	}
+
+	return collectValues(node)
+}
+
+// All returns a map for all matched keys and values with the pre(fix).
+func (t *Trie) All(pre string) map[string]interface{} {
+	node := findNode(t.root, []rune(pre))
+	if node == nil {
+		return nil
+	}
+
+	return collectAll(node)
+}
+
+// FuzzySearch performs a fuzzy search against the keys in the trie.
 func (t *Trie) FuzzySearch(pre string) []string {
-	keys := fuzzycollect(t.Root(), []rune(pre))
+	keys := fuzzycollect(t.root, []rune(pre))
 	sort.Sort(ByKeys(keys))
 	return keys
 }
 
-// Performs a prefix search against the keys in the trie.
+// PrefixSearch performs a prefix search against the keys in the trie.
 func (t *Trie) PrefixSearch(pre string) []string {
-	node := findNode(t.Root(), []rune(pre))
+	node := findNode(t.root, []rune(pre))
 	if node == nil {
 		return nil
 	}
@@ -152,21 +168,21 @@ func (t *Trie) PrefixSearch(pre string) []string {
 	return collect(node)
 }
 
-// FindLongestMatchedNode finds a longest matched key in the trie
-func (t *Trie) FindLongestMatchedNode(key string) (*Node, bool) {
-	var found *Node
-	node := t.Root()
+// findLongestMatchedNode finds a longest matched key in the trie
+func (t *Trie) findLongestMatchedNode(key string) (*trieNode, bool) {
+	var found *trieNode
+	node := t.root
 
 	if node == nil {
 		return nil, false
 	}
 
 	for _, r := range []rune(key) {
-		n, ok := node.Children()[r]
+		n, ok := node.children[r]
 		if !ok {
 			break
 		}
-		t, ok := n.Children()[nul]
+		t, ok := n.children[nul]
 		if ok && t.term {
 			found = t
 		}
@@ -180,28 +196,50 @@ func (t *Trie) FindLongestMatchedNode(key string) (*Node, bool) {
 
 // FindLongestMatchedkey finds a longest matched key in the trie
 func (t *Trie) FindLongestMatchedkey(key string) (string, bool) {
-	node, ok := t.FindLongestMatchedNode(key)
+	node, ok := t.findLongestMatchedNode(key)
 	if ok {
 		return node.path, true
 	}
 	return "", false
 }
 
-// FindMatchedNodes finds all matched nodes in the trie.
+// FindLongestMatchedPrefix finds a longest matched key with the input key in the trie and
+// returns a matched key, inserted value.
+func (t *Trie) FindLongestMatchedPrefix(key string) (string, interface{}, bool) {
+	node, ok := t.findLongestMatchedNode(key)
+	if !ok {
+		return "", nil, false
+	}
+	return node.path, node.meta, true
+}
+
+// FindPrefix finds all matched keys as the prefix against to the input key in the trie.
+func (t *Trie) FindPrefix(key string) map[string]interface{} {
+	m := make(map[string]interface{})
+	nodes, ok := t.findMatchedNodes(key)
+	if ok {
+		for _, n := range nodes {
+			m[n.path] = n.meta
+		}
+	}
+	return m
+}
+
+// findMatchedNodes finds all matched nodes in the trie.
 // The key of each node is a prefix string of the input key.
-func (t *Trie) FindMatchedNodes(key string) ([]*Node, bool) {
+func (t *Trie) findMatchedNodes(key string) ([]*trieNode, bool) {
 	found := false
-	node := t.Root()
+	node := t.root
 	if node == nil {
 		return nil, false
 	}
-	nodes := make([]*Node, 0, t.size)
+	nodes := make([]*trieNode, 0, t.size)
 	for _, r := range []rune(key) {
-		n, ok := node.Children()[r]
+		n, ok := node.children[r]
 		if !ok {
 			break
 		}
-		t, ok := n.Children()[nul]
+		t, ok := n.children[nul]
 		if ok && t.term {
 			nodes = append(nodes, t)
 			found = true
@@ -216,7 +254,7 @@ func (t *Trie) FindMatchedNodes(key string) ([]*Node, bool) {
 
 // FindMatchedKey finds all matched prefix keys against to the input key in the trie.
 func (t *Trie) FindMatchedKey(key string) ([]string, bool) {
-	nodes, ok := t.FindMatchedNodes(key)
+	nodes, ok := t.findMatchedNodes(key)
 	if ok {
 		keys := make([]string, 0, len(nodes))
 		for _, n := range nodes {
@@ -227,14 +265,14 @@ func (t *Trie) FindMatchedKey(key string) ([]string, bool) {
 	return nil, false
 }
 
-// FindAll finds all matched or similar values starts with the input key.
+// FindAll finds all relative or matched keys starts with the input key.
 func (t *Trie) FindAll(key string) map[string]interface{} {
 	m := make(map[string]interface{})
-	node := findNode(t.Root(), []rune(key))
+	node := findNode(t.root, []rune(key))
 	if node != nil {
 		m = collectAll(node)
 	}
-	nodes, ok := t.FindMatchedNodes(key)
+	nodes, ok := t.findMatchedNodes(key)
 	if ok {
 		for _, n := range nodes {
 			m[n.path] = n.meta
@@ -243,44 +281,25 @@ func (t *Trie) FindAll(key string) map[string]interface{} {
 	return m
 }
 
-// All returns a map for all matched keys and values with the pre(fix).
-func (t *Trie) All(pre string) map[string]interface{} {
-	node := findNode(t.Root(), []rune(pre))
-	if node == nil {
-		return nil
-	}
-
-	return collectAll(node)
-}
-
-// Values returns all values that have a key started with the pre(fix).
-func (t *Trie) Values(pre string) []interface{} {
-	node := findNode(t.Root(), []rune(pre))
-	if node == nil {
-		return nil
-	}
-
-	return collectValues(node)
-}
-
 // Creates and returns a pointer to a new child for the node.
-func (parent *Node) NewChild(val rune, path string, bitmask uint64, meta interface{}, term bool) *Node {
-	node := &Node{
+func (n *trieNode) newChild(val rune, path string, bitmask uint64, meta interface{}, term bool) *trieNode {
+	node := &trieNode{
 		val:      val,
 		path:     path,
 		mask:     bitmask,
 		term:     term,
 		meta:     meta,
-		parent:   parent,
-		children: make(map[rune]*Node),
-		depth:    parent.depth + 1,
+		parent:   n,
+		children: make(map[rune]*trieNode),
+		depth:    n.depth + 1,
 	}
-	parent.children[node.val] = node
-	parent.mask |= bitmask
+	n.children[node.val] = node
+	n.mask |= bitmask
 	return node
 }
 
-func (n *Node) RemoveChild(r rune) {
+// removeChild removes the child
+func (n *trieNode) removeChild(r rune) {
 	delete(n.children, r)
 	for nd := n.parent; nd != nil; nd = nd.parent {
 		nd.mask ^= nd.mask
@@ -291,49 +310,7 @@ func (n *Node) RemoveChild(r rune) {
 	}
 }
 
-// CollectAll returns all childrens using a map
-func (n *Node) CollectAll() map[string]interface{} {
-	return collectAll(n)
-}
-
-// Returns the parent of this node.
-func (n Node) Parent() *Node {
-	return n.parent
-}
-
-// Returns the meta information of this node.
-func (n Node) Meta() interface{} {
-	return n.meta
-}
-
-// Returns the children of this node.
-func (n Node) Children() map[rune]*Node {
-	return n.children
-}
-
-func (n Node) Terminating() bool {
-	return n.term
-}
-
-func (n Node) Val() rune {
-	return n.val
-}
-
-func (n Node) Depth() int {
-	return n.depth
-}
-
-func (n Node) Key() string {
-	return n.path
-}
-
-// Returns a uint64 representing the current
-// mask of this node.
-func (n Node) Mask() uint64 {
-	return n.mask
-}
-
-func findNode(node *Node, runes []rune) *Node {
+func findNode(node *trieNode, runes []rune) *trieNode {
 	if node == nil {
 		return nil
 	}
@@ -342,7 +319,7 @@ func findNode(node *Node, runes []rune) *Node {
 		return node
 	}
 
-	n, ok := node.Children()[runes[0]]
+	n, ok := node.children[runes[0]]
 	if !ok {
 		return nil
 	}
@@ -365,13 +342,13 @@ func maskruneslice(rs []rune) uint64 {
 	return m
 }
 
-func collect(node *Node) []string {
+func collect(node *trieNode) []string {
 	var (
-		n *Node
+		n *trieNode
 		i int
 	)
 	keys := make([]string, 0, node.termCount)
-	nodes := make([]*Node, 1, len(node.children)+1)
+	nodes := make([]*trieNode, 1, len(node.children)+1)
 	nodes[0] = node
 	for l := len(nodes); l != 0; l = len(nodes) {
 		i = l - 1
@@ -388,14 +365,14 @@ func collect(node *Node) []string {
 	return keys
 }
 
-func collectValues(node *Node) []interface{} {
+func collectValues(node *trieNode) []interface{} {
 	var (
-		n *Node
+		n *trieNode
 		i int
 	)
 	values := make([]interface{}, 0, node.termCount)
 	// keys := make([]string, 0, node.termCount)
-	nodes := make([]*Node, 1, len(node.children)+1)
+	nodes := make([]*trieNode, 1, len(node.children)+1)
 	nodes[0] = node
 	for l := len(nodes); l != 0; l = len(nodes) {
 		i = l - 1
@@ -411,14 +388,14 @@ func collectValues(node *Node) []interface{} {
 	return values
 }
 
-func collectAll(node *Node) map[string]interface{} {
+func collectAll(node *trieNode) map[string]interface{} {
 	var (
-		n *Node
+		n *trieNode
 		i int
 	)
 	m := make(map[string]interface{})
 	// keys := make([]string, 0, node.termCount)
-	nodes := make([]*Node, 1, len(node.children)+1)
+	nodes := make([]*trieNode, 1, len(node.children)+1)
 	nodes[0] = node
 	for l := len(nodes); l != 0; l = len(nodes) {
 		i = l - 1
@@ -437,10 +414,10 @@ func collectAll(node *Node) map[string]interface{} {
 
 type potentialSubtree struct {
 	idx  int
-	node *Node
+	node *trieNode
 }
 
-func fuzzycollect(node *Node, partial []rune) []string {
+func fuzzycollect(node *trieNode, partial []rune) []string {
 	if len(partial) == 0 {
 		return collect(node)
 	}

@@ -29,10 +29,10 @@ func addFromFile(t *Trie, path string) {
 func TestTrieAdd(t *testing.T) {
 	trie := New()
 
-	n := trie.Add("foo", 1)
+	trie.Add("foo", 1)
 
-	if n.Meta().(int) != 1 {
-		t.Errorf("Expected 1, got: %d", n.Meta().(int))
+	if v, ok := trie.Find("foo"); !ok || v != 1 {
+		t.Errorf("Expected 1, got: %v", v)
 	}
 }
 
@@ -45,8 +45,8 @@ func TestTrieFind(t *testing.T) {
 		t.Fatal("Could not find node")
 	}
 
-	if n.Meta().(int) != 1 {
-		t.Errorf("Expected 1, got: %d", n.Meta().(int))
+	if n.(int) != 1 {
+		t.Errorf("Expected 1, got: %d", n.(int))
 	}
 }
 
@@ -105,7 +105,7 @@ func TestRemove(t *testing.T) {
 	}
 
 	trie.Remove("foosball")
-	keys := trie.Keys()
+	keys := trie.Keys("")
 
 	if len(keys) != 2 {
 		t.Errorf("Expected 2 keys got %d", len(keys))
@@ -146,9 +146,9 @@ func TestTrieKeys(t *testing.T) {
 				trie.Add(key, nil)
 			}
 
-			keys := trie.Keys()
+			keys := trie.Keys("")
 			if len(keys) != len(test.expectedKeys) {
-				t.Errorf("Expected %v keys, got %d, keys were: %v", len(test.expectedKeys), len(keys), trie.Keys())
+				t.Errorf("Expected %v keys, got %d, keys were: %v", len(test.expectedKeys), len(keys), trie.Keys(""))
 			}
 
 			sort.Strings(keys)
@@ -354,7 +354,7 @@ func BenchmarkTieKeys(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		trie.Keys()
+		trie.Keys("")
 	}
 }
 
