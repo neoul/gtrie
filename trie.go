@@ -152,18 +152,39 @@ func (t Trie) PrefixSearch(pre string) []string {
 	return collect(node)
 }
 
-// Find longest matched key in the trie
-func (t *Trie) FindLongestMatch(key string) (string, bool) {
-	node := findNodeLongestMatch(t.Root(), []rune(key))
+// FindLongestMatchedNode finds a longest matched key in the trie
+func (t *Trie) FindLongestMatchedNode(key string) (*Node, bool) {
+	var found *Node
+	node := t.Root()
+
 	if node == nil {
-		return "", false
+		return nil, false
 	}
 
-	node, ok := node.Children()[nul]
-	if !ok || !node.term {
-		return "", false
+	for _, r := range []rune(key) {
+		n, ok := node.Children()[r]
+		if !ok {
+			break
+		}
+		t, ok := n.Children()[nul]
+		if ok && t.term {
+			found = t
+		}
+		node = n
 	}
-	return node.path, true
+	if found == nil {
+		return nil, false
+	}
+	return found, true
+}
+
+// FindLongestMatched finds a longest matched key in the trie
+func (t *Trie) FindLongestMatched(key string) (string, bool) {
+	node, ok := t.FindLongestMatchedNode(key)
+	if ok {
+		return node.path, true
+	}
+	return "", false
 }
 
 // Creates and returns a pointer to a new child for the node.
@@ -253,29 +274,6 @@ func findNode(node *Node, runes []rune) *Node {
 	}
 
 	return findNode(n, nrunes)
-}
-
-func findNodeLongestMatch(node *Node, runes []rune) *Node {
-	if node == nil {
-		return nil
-	}
-
-	if len(runes) == 0 {
-		return node
-	}
-
-	n, ok := node.Children()[runes[0]]
-	if !ok {
-		return node
-	}
-
-	var nrunes []rune
-	if len(runes) > 1 {
-		nrunes = runes[1:]
-	} else {
-		nrunes = runes[0:0]
-	}
-	return findNodeLongestMatch(n, nrunes)
 }
 
 func maskruneslice(rs []rune) uint64 {

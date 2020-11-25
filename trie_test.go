@@ -225,6 +225,14 @@ func TestTrie_FindLongestMatch(t *testing.T) {
 		"foreverandeverandeverandever",
 		"forbidden",
 		"ABC",
+		"/interfaces",
+		"/interfaces/interface",
+		"/interfaces/interface[name=1/2]",
+		"/interfaces/interface[name=1/2]/state",
+		"/interfaces/interface[name=1/2]/state/oper-status",
+		"/interfaces/interface[name=1/2]/state/enabled",
+		"/interfaces/interface[name=1/1]/state/enabled",
+		"/interfaces/interface[name=1/2]/state/admin-status",
 	}
 
 	// defer func() {
@@ -247,13 +255,14 @@ func TestTrie_FindLongestMatch(t *testing.T) {
 		{"fooo", "foo", true},
 		{"foretoldme", "foretold", true},
 		{"abc", "", false},
+		{"/interfaces/interface[name=1/2]/config/hello", "/interfaces/interface[name=1/2]", true},
 	}
 
 	for _, test := range tests {
-		t.Log("TEST", test.input)
-		output, ok := trie.FindLongestMatch(test.input)
+		t.Log("TEST input:", test.input)
+		output, ok := trie.FindLongestMatched(test.input)
 		if (test.ok != ok) || test.expected != output {
-			t.Errorf("Expected output %s for input %s", output, test.input)
+			t.Errorf("ok %v output %s, expected %s for input %s", ok, output, test.expected, test.input)
 		}
 	}
 
