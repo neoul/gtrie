@@ -14,24 +14,27 @@ import (
 )
 
 // Trie = trie.Trie
-type Trie trie.Trie
+type Trie struct {
+	*trie.Trie
+}
 
 // New creates a new Trie with an initialized root Node.
 func New() *Trie {
 	trie := trie.New()
-	return (*Trie)(trie)
+	if trie == nil {
+		return nil
+	}
+	return &Trie{Trie: trie}
 }
 
 // Add adds a new key with a value
-func (gt *Trie) Add(key string, value interface{}) {
-	t := (*trie.Trie)(gt)
-	t.Add(key, value)
+func (t *Trie) Add(key string, value interface{}) {
+	t.Trie.Add(key, value)
 }
 
 // Find finds the value associated with the key.
-func (gt *Trie) Find(key string) (interface{}, bool) {
-	t := (*trie.Trie)(gt)
-	node, ok := t.Find(key)
+func (t *Trie) Find(key string) (interface{}, bool) {
+	node, ok := t.Trie.Find(key)
 	if !ok {
 		return nil, false
 	}
@@ -40,9 +43,8 @@ func (gt *Trie) Find(key string) (interface{}, bool) {
 
 // FindLongestMatch finds a longest matched key in the trie and
 // returns a matched key, inserted value.
-func (gt *Trie) FindLongestMatch(key string) (string, interface{}, bool) {
-	t := (*trie.Trie)(gt)
-	node, ok := t.FindLongestMatchedNode(key)
+func (t *Trie) FindLongestMatch(key string) (string, interface{}, bool) {
+	node, ok := t.Trie.FindLongestMatchedNode(key)
 	if !ok {
 		return "", nil, false
 	}
