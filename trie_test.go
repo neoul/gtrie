@@ -454,7 +454,7 @@ func BenchmarkAddRemove(b *testing.B) {
 	}
 }
 
-func TestTrie_ToMap(t *testing.T) {
+func TestTrie_All(t *testing.T) {
 	trie := New()
 	expected := []string{
 		"foo",
@@ -503,6 +503,67 @@ func TestTrie_ToMap(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := trie.All(tt.pre); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Trie.All() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestTrie_FindMatchedKey(t *testing.T) {
+	trie := New()
+	expected := []string{
+		"foo",
+		"foosball",
+		"football",
+		"foreboding",
+		"forementioned",
+		"foretold",
+		"foreverandeverandeverandever",
+		"forbidden",
+		"ABC",
+		"/interfaces",
+		"/interfaces/interface",
+		"/interfaces/interface[name=1/2]",
+		"/interfaces/interface[name=1/2]/state",
+		"/interfaces/interface[name=1/2]/state/oper-status",
+		"/interfaces/interface[name=1/2]/state/enabled",
+		"/interfaces/interface[name=1/1]/state/enabled",
+		"/interfaces/interface[name=1/2]/state/admin-status",
+		"/interfaces/interface/state/counters",
+	}
+
+	for _, key := range expected {
+		trie.Add(key, true)
+	}
+
+	tests := []struct {
+		name string
+		key  string
+		want []string
+	}{
+		{
+			name: "FindMatchedKey",
+			key:  "/interfaces/interface[name=1/2]/",
+			want: []string{
+				"/interfaces",
+				"/interfaces/interface",
+				"/interfaces/interface[name=1/2]",
+			},
+		},
+		{
+			name: "FindMatchedKey",
+			key:  "/interfaces/interface[name=1/2]/state",
+			want: []string{
+				"/interfaces",
+				"/interfaces/interface",
+				"/interfaces/interface[name=1/2]",
+				"/interfaces/interface[name=1/2]/state",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got, ok := trie.FindMatchedKey(tt.key); !ok || !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Trie.All() = %v, want %v", got, tt.want)
 			}
 		})

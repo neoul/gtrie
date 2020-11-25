@@ -227,6 +227,22 @@ func (t *Trie) FindMatchedKey(key string) ([]string, bool) {
 	return nil, false
 }
 
+// FindAll finds all matched or similar values starts with the input key.
+func (t *Trie) FindAll(key string) map[string]interface{} {
+	m := make(map[string]interface{})
+	node := findNode(t.Root(), []rune(key))
+	if node != nil {
+		m = collectAll(node)
+	}
+	nodes, ok := t.FindMatchedNodes(key)
+	if ok {
+		for _, n := range nodes {
+			m[n.path] = n.meta
+		}
+	}
+	return m
+}
+
 // All returns a map for all matched keys and values with the pre(fix).
 func (t *Trie) All(pre string) map[string]interface{} {
 	node := findNode(t.Root(), []rune(pre))
