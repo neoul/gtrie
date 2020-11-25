@@ -261,7 +261,7 @@ func TestTrie_FindLongestMatch(t *testing.T) {
 
 	for _, test := range tests {
 		t.Log("TEST input:", test.input)
-		output, ok := trie.FindLongestMatched(test.input)
+		output, ok := trie.FindLongestMatchedkey(test.input)
 		if (test.ok != ok) || test.expected != output {
 			t.Errorf("ok %v output %s, expected %s for input %s", ok, output, test.expected, test.input)
 		}
@@ -486,7 +486,7 @@ func TestTrie_ToMap(t *testing.T) {
 		want map[string]interface{}
 	}{
 		{
-			name: "ToMap",
+			name: "All",
 			pre:  "/interfaces",
 			want: map[string]interface{}{
 				"/interfaces":                                        true,
@@ -502,8 +502,8 @@ func TestTrie_ToMap(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := trie.ToMap(tt.pre); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Trie.ToMap() = %v, want %v", got, tt.want)
+			if got := trie.All(tt.pre); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Trie.All() = %v, want %v", got, tt.want)
 			}
 		})
 	}

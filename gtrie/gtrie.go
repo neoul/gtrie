@@ -50,3 +50,28 @@ func (t *Trie) FindLongestMatched(key string) (string, interface{}, bool) {
 	}
 	return node.Key(), node.Meta(), true
 }
+
+// FindMatched finds all matched keys against to the input key in the trie.
+func (t *Trie) FindMatched(key string) map[string]interface{} {
+	m := make(map[string]interface{})
+	nodes, ok := t.FindMatchedNodes(key)
+	if ok {
+		for _, n := range nodes {
+			m[n.Key()] = n.Meta()
+		}
+	}
+	return m
+}
+
+// FindAll finds all matched or similar values starts with the input key.
+func (t *Trie) FindAll(key string) map[string]interface{} {
+	nodes, ok := t.FindMatchedNodes(key)
+	if ok {
+		n := nodes[len(nodes)-1]
+		m := n.CollectAll()
+		for _, n = range nodes {
+			m[n.Key()] = n.Meta()
+		}
+	}
+	return map[string]interface{}{}
+}

@@ -178,8 +178,8 @@ func (t *Trie) FindLongestMatchedNode(key string) (*Node, bool) {
 	return found, true
 }
 
-// FindLongestMatched finds a longest matched key in the trie
-func (t *Trie) FindLongestMatched(key string) (string, bool) {
+// FindLongestMatchedkey finds a longest matched key in the trie
+func (t *Trie) FindLongestMatchedkey(key string) (string, bool) {
 	node, ok := t.FindLongestMatchedNode(key)
 	if ok {
 		return node.path, true
@@ -187,8 +187,48 @@ func (t *Trie) FindLongestMatched(key string) (string, bool) {
 	return "", false
 }
 
-// ToMap returns a map for all matched keys and values with the pre(fix).
-func (t *Trie) ToMap(pre string) map[string]interface{} {
+// FindMatchedNodes finds all matched nodes in the trie.
+// The key of each node is a prefix string of the input key.
+func (t *Trie) FindMatchedNodes(key string) ([]*Node, bool) {
+	found := false
+	node := t.Root()
+	if node == nil {
+		return nil, false
+	}
+	nodes := make([]*Node, 0, t.size)
+	for _, r := range []rune(key) {
+		n, ok := node.Children()[r]
+		if !ok {
+			break
+		}
+		t, ok := n.Children()[nul]
+		if ok && t.term {
+			nodes = append(nodes, t)
+			found = true
+		}
+		node = n
+	}
+	if found {
+		return nodes, true
+	}
+	return nil, false
+}
+
+// FindMatchedKey finds all matched prefix keys against to the input key in the trie.
+func (t *Trie) FindMatchedKey(key string) ([]string, bool) {
+	nodes, ok := t.FindMatchedNodes(key)
+	if ok {
+		keys := make([]string, 0, len(nodes))
+		for _, n := range nodes {
+			keys = append(keys, n.path)
+		}
+		return keys, true
+	}
+	return nil, false
+}
+
+// All returns a map for all matched keys and values with the pre(fix).
+func (t *Trie) All(pre string) map[string]interface{} {
 	node := findNode(t.Root(), []rune(pre))
 	if node == nil {
 		return nil
@@ -197,7 +237,7 @@ func (t *Trie) ToMap(pre string) map[string]interface{} {
 	return collectAll(node)
 }
 
-// Values returns all values matched with the pre(fix).
+// Values returns all values that have a key started with the pre(fix).
 func (t *Trie) Values(pre string) []interface{} {
 	node := findNode(t.Root(), []rune(pre))
 	if node == nil {
@@ -233,6 +273,11 @@ func (n *Node) RemoveChild(r rune) {
 			nd.mask |= c.mask
 		}
 	}
+}
+
+// CollectAll returns all childrens using a map
+func (n *Node) CollectAll() map[string]interface{} {
+	return collectAll(n)
 }
 
 // Returns the parent of this node.
