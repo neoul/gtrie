@@ -1,9 +1,9 @@
-// Package trie is Implementation of an R-Way Trie data structure.
+// Package gtrie is Implementation of an R-Way Trie data structure.
 //
 // A Trie has a root trieNode which is the base of the tree.
 // Each subsequent trieNode has a letter and children, which are
 // nodes that have letter values associated with them.
-package trie
+package gtrie
 
 import (
 	"sort"
