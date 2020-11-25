@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"log"
 	"os"
+	"reflect"
 	"sort"
 	"testing"
 )
@@ -265,8 +266,6 @@ func TestTrie_FindLongestMatch(t *testing.T) {
 			t.Errorf("ok %v output %s, expected %s for input %s", ok, output, test.expected, test.input)
 		}
 	}
-
-	trie.PrefixSearch("fsfsdfasdf")
 }
 
 func TestFuzzySearch(t *testing.T) {
@@ -452,5 +451,60 @@ func BenchmarkAddRemove(b *testing.B) {
 		for k := range words {
 			trie.Remove(words[k])
 		}
+	}
+}
+
+func TestTrie_ToMap(t *testing.T) {
+	trie := New()
+	expected := []string{
+		"foo",
+		"foosball",
+		"football",
+		"foreboding",
+		"forementioned",
+		"foretold",
+		"foreverandeverandeverandever",
+		"forbidden",
+		"ABC",
+		"/interfaces",
+		"/interfaces/interface",
+		"/interfaces/interface[name=1/2]",
+		"/interfaces/interface[name=1/2]/state",
+		"/interfaces/interface[name=1/2]/state/oper-status",
+		"/interfaces/interface[name=1/2]/state/enabled",
+		"/interfaces/interface[name=1/1]/state/enabled",
+		"/interfaces/interface[name=1/2]/state/admin-status",
+	}
+
+	for _, key := range expected {
+		trie.Add(key, true)
+	}
+
+	tests := []struct {
+		name string
+		pre  string
+		want map[string]interface{}
+	}{
+		{
+			name: "ToMap",
+			pre:  "/interfaces",
+			want: map[string]interface{}{
+				"/interfaces":                                        true,
+				"/interfaces/interface":                              true,
+				"/interfaces/interface[name=1/2]":                    true,
+				"/interfaces/interface[name=1/2]/state":              true,
+				"/interfaces/interface[name=1/2]/state/oper-status":  true,
+				"/interfaces/interface[name=1/2]/state/enabled":      true,
+				"/interfaces/interface[name=1/1]/state/enabled":      true,
+				"/interfaces/interface[name=1/2]/state/admin-status": true,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := trie.ToMap(tt.pre); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Trie.ToMap() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

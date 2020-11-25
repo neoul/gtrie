@@ -136,14 +136,14 @@ func (t *Trie) Keys() []string {
 }
 
 // Performs a fuzzy search against the keys in the trie.
-func (t Trie) FuzzySearch(pre string) []string {
+func (t *Trie) FuzzySearch(pre string) []string {
 	keys := fuzzycollect(t.Root(), []rune(pre))
 	sort.Sort(ByKeys(keys))
 	return keys
 }
 
 // Performs a prefix search against the keys in the trie.
-func (t Trie) PrefixSearch(pre string) []string {
+func (t *Trie) PrefixSearch(pre string) []string {
 	node := findNode(t.Root(), []rune(pre))
 	if node == nil {
 		return nil
@@ -185,6 +185,26 @@ func (t *Trie) FindLongestMatched(key string) (string, bool) {
 		return node.path, true
 	}
 	return "", false
+}
+
+// ToMap returns a map for all matched keys and values with the pre(fix).
+func (t *Trie) ToMap(pre string) map[string]interface{} {
+	node := findNode(t.Root(), []rune(pre))
+	if node == nil {
+		return nil
+	}
+
+	return collectAll(node)
+}
+
+// Values returns all values matched with the pre(fix).
+func (t *Trie) Values(pre string) []interface{} {
+	node := findNode(t.Root(), []rune(pre))
+	if node == nil {
+		return nil
+	}
+
+	return collectValues(node)
 }
 
 // Creates and returns a pointer to a new child for the node.
@@ -305,6 +325,53 @@ func collect(node *Node) []string {
 		}
 	}
 	return keys
+}
+
+func collectValues(node *Node) []interface{} {
+	var (
+		n *Node
+		i int
+	)
+	values := make([]interface{}, 0, node.termCount)
+	// keys := make([]string, 0, node.termCount)
+	nodes := make([]*Node, 1, len(node.children)+1)
+	nodes[0] = node
+	for l := len(nodes); l != 0; l = len(nodes) {
+		i = l - 1
+		n = nodes[i]
+		nodes = nodes[:i]
+		for _, c := range n.children {
+			nodes = append(nodes, c)
+		}
+		if n.term {
+			values = append(values, n.meta)
+		}
+	}
+	return values
+}
+
+func collectAll(node *Node) map[string]interface{} {
+	var (
+		n *Node
+		i int
+	)
+	m := make(map[string]interface{})
+	// keys := make([]string, 0, node.termCount)
+	nodes := make([]*Node, 1, len(node.children)+1)
+	nodes[0] = node
+	for l := len(nodes); l != 0; l = len(nodes) {
+		i = l - 1
+		n = nodes[i]
+		nodes = nodes[:i]
+		for _, c := range n.children {
+			nodes = append(nodes, c)
+		}
+		if n.term {
+			word := n.path
+			m[word] = n.meta
+		}
+	}
+	return m
 }
 
 type potentialSubtree struct {

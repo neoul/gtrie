@@ -41,9 +41,9 @@ func (t *Trie) Find(key string) (interface{}, bool) {
 	return node.Meta(), ok
 }
 
-// FindLongestMatch finds a longest matched key in the trie and
+// FindLongestMatched finds a longest matched key in the trie and
 // returns a matched key, inserted value.
-func (t *Trie) FindLongestMatch(key string) (string, interface{}, bool) {
+func (t *Trie) FindLongestMatched(key string) (string, interface{}, bool) {
 	node, ok := t.Trie.FindLongestMatchedNode(key)
 	if !ok {
 		return "", nil, false
