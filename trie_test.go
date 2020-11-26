@@ -64,7 +64,7 @@ func TestTrieFindMissingWithSubtree(t *testing.T) {
 	}
 }
 
-func TestTrieHasKeysWithPrefix(t *testing.T) {
+func TestTrieHasPrefix(t *testing.T) {
 	trie := New()
 	trie.Add("fooish", 1)
 	trie.Add("foobar", 1)
@@ -78,8 +78,8 @@ func TestTrieHasKeysWithPrefix(t *testing.T) {
 		{"fool", false},
 	}
 	for _, testcase := range testcases {
-		if trie.HasKeysWithPrefix(testcase.key) != testcase.expected {
-			t.Errorf("HasKeysWithPrefix(\"%s\"): expected result to be %t", testcase.key, testcase.expected)
+		if trie.HasPrefix(testcase.key) != testcase.expected {
+			t.Errorf("HasPrefix(\"%s\"): expected result to be %t", testcase.key, testcase.expected)
 		}
 	}
 }
@@ -565,6 +565,61 @@ func TestTrie_FindMatchedKey(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got, ok := trie.FindMatchedKey(tt.key); !ok || !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Trie.All() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestTrie_FindAll(t *testing.T) {
+	trie := New()
+	expected := []string{
+		"foo",
+		"foosball",
+		"football",
+		"foreboding",
+		"forementioned",
+		"foretold",
+		"foreverandeverandeverandever",
+		"forbidden",
+		"ABC",
+		"/interfaces",
+		"/interfaces/interface",
+		"/interfaces/interface[name=1/2]",
+		"/interfaces/interface[name=1/2]/state",
+		"/interfaces/interface[name=1/2]/state/oper-status",
+		"/interfaces/interface[name=1/2]/state/enabled",
+		"/interfaces/interface[name=1/1]/state/enabled",
+		"/interfaces/interface[name=1/2]/state/admin-status",
+		"/interfaces/interface/state/counters",
+	}
+
+	for _, key := range expected {
+		trie.Add(key, true)
+	}
+
+	tests := []struct {
+		name string
+		key  string
+		want map[string]interface{}
+	}{
+		{
+			name: "FindAll",
+			key:  "/interfaces/interface[name=1/2]",
+			want: map[string]interface{}{
+				"/interfaces":                                        true,
+				"/interfaces/interface":                              true,
+				"/interfaces/interface[name=1/2]":                    true,
+				"/interfaces/interface[name=1/2]/state":              true,
+				"/interfaces/interface[name=1/2]/state/oper-status":  true,
+				"/interfaces/interface[name=1/2]/state/enabled":      true,
+				"/interfaces/interface[name=1/2]/state/admin-status": true,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := trie.FindAll(tt.key); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Trie.FindAll() = %v, want %v", got, tt.want)
 			}
 		})
 	}

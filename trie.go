@@ -1,4 +1,6 @@
-// Package gtrie is Implementation of an R-Way Trie data structure.
+// Package gtrie is an implementation of an R-Way Trie data structure.
+// This package supports more useful functions for the trie based on
+// derekparker/trie (https://godoc.org/github.com/derekparker/trie).
 //
 // A Trie has a root trieNode which is the base of the tree.
 // Each subsequent trieNode has a letter and children, which are
@@ -30,12 +32,12 @@ type Trie struct {
 	size int
 }
 
-// ByKeys for fuzzy search
-type ByKeys []string
+// byKeys for fuzzy search
+type byKeys []string
 
-func (a ByKeys) Len() int           { return len(a) }
-func (a ByKeys) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a ByKeys) Less(i, j int) bool { return len(a[i]) < len(a[j]) }
+func (a byKeys) Len() int           { return len(a) }
+func (a byKeys) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a byKeys) Less(i, j int) bool { return len(a[i]) < len(a[j]) }
 
 const nul = 0x0
 
@@ -52,10 +54,10 @@ func (t *Trie) Size() int {
 	return t.size
 }
 
-// Add adds the key to the Trie, including meta data. Meta data
+// Add adds the key to the Trie, including a value. The value
 // is stored as `interface{}` and must be type cast by
 // the caller.
-func (t *Trie) Add(key string, meta interface{}) {
+func (t *Trie) Add(key string, value interface{}) {
 	t.mu.Lock()
 
 	t.size++
@@ -75,11 +77,11 @@ func (t *Trie) Add(key string, meta interface{}) {
 		}
 		node.termCount++
 	}
-	node = node.newChild(nul, key, 0, meta, true)
+	node = node.newChild(nul, key, 0, value, true)
 	t.mu.Unlock()
 }
 
-// Find finds and returns meta data associated with `key`.
+// Find finds and returns a value associated with `key`.
 func (t *Trie) Find(key string) (interface{}, bool) {
 	node := findNode(t.root, []rune(key))
 	if node == nil {
@@ -94,9 +96,9 @@ func (t *Trie) Find(key string) (interface{}, bool) {
 	return node.meta, true
 }
 
-// HasKeysWithPrefix returns true if there is a key started with the prefix.
-func (t *Trie) HasKeysWithPrefix(key string) bool {
-	node := findNode(t.root, []rune(key))
+// HasPrefix returns true if there is a key started with `pre(fix)`.
+func (t *Trie) HasPrefix(pre string) bool {
+	node := findNode(t.root, []rune(pre))
 	return node != nil
 }
 
@@ -122,7 +124,7 @@ func (t *Trie) Remove(key string) {
 	t.mu.Unlock()
 }
 
-// Keys returns all the keys currently stored and started with the pre(fix) in the trie.
+// Keys returns all the keys currently stored and started with `pre(fix)` in the trie.
 func (t *Trie) Keys(pre string) []string {
 	if t.size == 0 {
 		return []string{}
@@ -131,7 +133,7 @@ func (t *Trie) Keys(pre string) []string {
 	return t.PrefixSearch(pre)
 }
 
-// Values returns all values that have a key started with the pre(fix).
+// Values returns all values that have a key started with `pre(fix)`.
 func (t *Trie) Values(pre string) []interface{} {
 	node := findNode(t.root, []rune(pre))
 	if node == nil {
@@ -141,7 +143,7 @@ func (t *Trie) Values(pre string) []interface{} {
 	return collectValues(node)
 }
 
-// All returns a map for all matched keys and values with the pre(fix).
+// All returns a map for all matched keys and values with `pre(fix)`.
 func (t *Trie) All(pre string) map[string]interface{} {
 	node := findNode(t.root, []rune(pre))
 	if node == nil {
@@ -154,7 +156,7 @@ func (t *Trie) All(pre string) map[string]interface{} {
 // FuzzySearch performs a fuzzy search against the keys in the trie.
 func (t *Trie) FuzzySearch(pre string) []string {
 	keys := fuzzycollect(t.root, []rune(pre))
-	sort.Sort(ByKeys(keys))
+	sort.Sort(byKeys(keys))
 	return keys
 }
 
@@ -168,7 +170,7 @@ func (t *Trie) PrefixSearch(pre string) []string {
 	return collect(node)
 }
 
-// findLongestMatchedNode finds a longest matched key in the trie
+// findLongestMatchedNode finds a longest matched key with `key` in the trie
 func (t *Trie) findLongestMatchedNode(key string) (*trieNode, bool) {
 	var found *trieNode
 	node := t.root
@@ -194,7 +196,7 @@ func (t *Trie) findLongestMatchedNode(key string) (*trieNode, bool) {
 	return found, true
 }
 
-// FindLongestMatchedkey finds a longest matched key in the trie
+// FindLongestMatchedkey finds a longest matched key with `key` in the trie
 func (t *Trie) FindLongestMatchedkey(key string) (string, bool) {
 	node, ok := t.findLongestMatchedNode(key)
 	if ok {
@@ -203,8 +205,8 @@ func (t *Trie) FindLongestMatchedkey(key string) (string, bool) {
 	return "", false
 }
 
-// FindLongestMatchedPrefix finds a longest matched key with the input key in the trie and
-// returns a matched key, inserted value.
+// FindLongestMatchedPrefix finds a longest matched key with the input `key` in the trie and
+// returns a matched key (that is a prefix of `key`) and a inserted value.
 func (t *Trie) FindLongestMatchedPrefix(key string) (string, interface{}, bool) {
 	node, ok := t.findLongestMatchedNode(key)
 	if !ok {
@@ -213,7 +215,7 @@ func (t *Trie) FindLongestMatchedPrefix(key string) (string, interface{}, bool) 
 	return node.path, node.meta, true
 }
 
-// FindPrefix finds all matched keys as the prefix against to the input key in the trie.
+// FindPrefix finds all matched keys as the prefix against to the input `key` in the trie.
 func (t *Trie) FindPrefix(key string) map[string]interface{} {
 	m := make(map[string]interface{})
 	nodes, ok := t.findMatchedNodes(key)
@@ -226,7 +228,7 @@ func (t *Trie) FindPrefix(key string) map[string]interface{} {
 }
 
 // findMatchedNodes finds all matched nodes in the trie.
-// The key of each node is a prefix string of the input key.
+// The key of each node is a prefix of the input `key`.
 func (t *Trie) findMatchedNodes(key string) ([]*trieNode, bool) {
 	found := false
 	node := t.root
@@ -252,7 +254,7 @@ func (t *Trie) findMatchedNodes(key string) ([]*trieNode, bool) {
 	return nil, false
 }
 
-// FindMatchedKey finds all matched prefix keys against to the input key in the trie.
+// FindMatchedKey finds all matched prefix keys against to the input `key` in the trie.
 func (t *Trie) FindMatchedKey(key string) ([]string, bool) {
 	nodes, ok := t.findMatchedNodes(key)
 	if ok {
@@ -265,7 +267,8 @@ func (t *Trie) FindMatchedKey(key string) ([]string, bool) {
 	return nil, false
 }
 
-// FindAll finds all relative or matched keys starts with the input key.
+// FindAll finds all relative prefix keys against to the input `key` and
+// all matched keys that starts with the input `key`.
 func (t *Trie) FindAll(key string) map[string]interface{} {
 	m := make(map[string]interface{})
 	node := findNode(t.root, []rune(key))

@@ -1,7 +1,11 @@
-[![GoDoc](https://godoc.org/github.com/derekparker/trie?status.svg)](https://godoc.org/github.com/derekparker/trie)
+[![GoDoc](https://godoc.org/github.com/derekparker/trie?status.svg)](https://godoc.org/github.com/neoul/gtrie)
 
 # Trie
 Data structure and relevant algorithms for extremely fast prefix/fuzzy string searching.
+
+Package gtrie is an implementation of an R-Way Trie data structure.
+This package supports more useful functions for the trie based on
+derekparker/trie (https://godoc.org/github.com/derekparker/trie).
 
 ## Usage
 
@@ -41,8 +45,9 @@ t.PrefixSearch("foo")
 ```
 
 Fast test for valid prefix:
+
 ```Go
-t.HasKeysWithPrefix("foo")
+t.HasPrefix("foo")
 ```
 
 Fuzzy search with:
@@ -52,6 +57,7 @@ t.FuzzySearch("fb")
 ```
 
 ## Contributing
+
 Fork this repo and run tests with:
 
 	go test
