@@ -235,6 +235,9 @@ func (t *Trie) findMatchedNodes(key string) ([]*trieNode, bool) {
 	if node == nil {
 		return nil, false
 	}
+	if t.size <= 0 {
+		return nil, false
+	}
 	nodes := make([]*trieNode, 0, t.size)
 	for _, r := range []rune(key) {
 		n, ok := node.children[r]
