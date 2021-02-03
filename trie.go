@@ -62,7 +62,7 @@ func (t *Trie) Add(key string, value interface{}) {
 	defer t.mu.Unlock()
 	cnt := 1
 	runes := []rune(key)
-	// Remove the existent node
+	// check the node exists
 	if node := findNode(t.root, runes); node != nil {
 		if node, ok := node.children[nul]; ok && node.term {
 			cnt = 0
@@ -133,12 +133,13 @@ func (t *Trie) Remove(key string) {
 	t.size--
 	node.removeChild(nul)
 	for n := node; n.parent != nil; n = n.parent {
-		i++
-		if len(n.children) <= 0 {
-			r := rs[len(rs)-i]
-			// fmt.Printf("key %s, parent.val %c n.val %c r %c\n", target.path, n.parent.val, n.val, r)
-			n.parent.removeChild(r)
+		if len(n.children) > 0 {
+			break
 		}
+		i++
+		r := rs[len(rs)-i]
+		// fmt.Printf("key %s, parent.val %c n.val %c r %c\n", target.path, n.parent.val, n.val, r)
+		n.parent.removeChild(r)
 	}
 }
 
@@ -369,6 +370,7 @@ func (n *trieNode) newChild(val rune, path string, bitmask uint64, meta interfac
 // removeChild removes the child
 func (n *trieNode) removeChild(r rune) {
 	delete(n.children, r)
+	n.termCount--
 	for nd := n.parent; nd != nil; nd = nd.parent {
 		nd.mask ^= nd.mask
 		nd.mask |= uint64(1) << uint64(nd.val-'a')
