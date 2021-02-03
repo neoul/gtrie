@@ -27,7 +27,7 @@ type trieNode struct {
 
 // Trie for control
 type Trie struct {
-	mu   sync.Mutex
+	mu   sync.RWMutex
 	root *trieNode
 	size int
 }
@@ -83,6 +83,8 @@ func (t *Trie) Add(key string, value interface{}) {
 
 // Find finds and returns a value associated with `key`.
 func (t *Trie) Find(key string) (interface{}, bool) {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	node := findNode(t.root, []rune(key))
 	if node == nil {
 		return nil, false
@@ -98,6 +100,8 @@ func (t *Trie) Find(key string) (interface{}, bool) {
 
 // HasPrefix returns true if there is a key started with `pre(fix)`.
 func (t *Trie) HasPrefix(pre string) bool {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	node := findNode(t.root, []rune(pre))
 	return node != nil
 }
@@ -105,12 +109,13 @@ func (t *Trie) HasPrefix(pre string) bool {
 // Remove removes a key from the trie, ensuring that
 // all bitmasks up to root are appropriately recalculated.
 func (t *Trie) Remove(key string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	var (
 		i    int
 		rs   = []rune(key)
 		node = findNode(t.root, []rune(key))
 	)
-	t.mu.Lock()
 
 	t.size--
 	for n := node.parent; n != nil; n = n.parent {
@@ -121,11 +126,11 @@ func (t *Trie) Remove(key string) {
 			break
 		}
 	}
-	t.mu.Unlock()
 }
 
 // Keys returns all the keys currently stored and started with `pre(fix)` in the trie.
 func (t *Trie) Keys(pre string) []string {
+	// RLock & RUnlock at PrefixSearch
 	if t.size == 0 {
 		return []string{}
 	}
@@ -135,6 +140,8 @@ func (t *Trie) Keys(pre string) []string {
 
 // Values returns all values that have a key started with `pre(fix)`.
 func (t *Trie) Values(pre string) []interface{} {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	node := findNode(t.root, []rune(pre))
 	if node == nil {
 		return nil
@@ -145,6 +152,8 @@ func (t *Trie) Values(pre string) []interface{} {
 
 // All returns a map for all matched keys and values with `pre(fix)`.
 func (t *Trie) All(pre string) map[string]interface{} {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	node := findNode(t.root, []rune(pre))
 	if node == nil {
 		return nil
@@ -155,6 +164,8 @@ func (t *Trie) All(pre string) map[string]interface{} {
 
 // FuzzySearch performs a fuzzy search against the keys in the trie.
 func (t *Trie) FuzzySearch(pre string) []string {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	keys := fuzzycollect(t.root, []rune(pre))
 	sort.Sort(byKeys(keys))
 	return keys
@@ -162,6 +173,8 @@ func (t *Trie) FuzzySearch(pre string) []string {
 
 // PrefixSearch performs a prefix search against the keys in the trie.
 func (t *Trie) PrefixSearch(pre string) []string {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	node := findNode(t.root, []rune(pre))
 	if node == nil {
 		return nil
@@ -198,6 +211,8 @@ func (t *Trie) findLongestMatchedNode(key string) (*trieNode, bool) {
 
 // FindLongestMatchedkey finds a longest matched key with `key` in the trie
 func (t *Trie) FindLongestMatchedkey(key string) (string, bool) {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	node, ok := t.findLongestMatchedNode(key)
 	if ok {
 		return node.path, true
@@ -208,6 +223,8 @@ func (t *Trie) FindLongestMatchedkey(key string) (string, bool) {
 // FindLongestMatchedPrefix finds a longest matched key with the input `key` in the trie and
 // returns a matched key (that is a prefix of `key`) and a inserted value.
 func (t *Trie) FindLongestMatchedPrefix(key string) (string, interface{}, bool) {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	node, ok := t.findLongestMatchedNode(key)
 	if !ok {
 		return "", nil, false
@@ -217,6 +234,8 @@ func (t *Trie) FindLongestMatchedPrefix(key string) (string, interface{}, bool) 
 
 // FindPrefix finds all matched keys as the prefix against to the input `key` in the trie.
 func (t *Trie) FindPrefix(key string) map[string]interface{} {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	m := make(map[string]interface{})
 	nodes, ok := t.findMatchedNodes(key)
 	if ok {
@@ -259,6 +278,8 @@ func (t *Trie) findMatchedNodes(key string) ([]*trieNode, bool) {
 
 // FindMatchedKey finds all matched prefix keys against to the input `key` in the trie.
 func (t *Trie) FindMatchedKey(key string) ([]string, bool) {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	nodes, ok := t.findMatchedNodes(key)
 	if ok {
 		keys := make([]string, 0, len(nodes))
@@ -273,6 +294,8 @@ func (t *Trie) FindMatchedKey(key string) ([]string, bool) {
 // FindAll finds all relative prefix keys against to the input `key` and
 // all matched keys that starts with the input `key`.
 func (t *Trie) FindAll(key string) map[string]interface{} {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	m := make(map[string]interface{})
 	node := findNode(t.root, []rune(key))
 	if node != nil {
