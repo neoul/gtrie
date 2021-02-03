@@ -115,7 +115,7 @@ func (t *Trie) Remove(key string) {
 	t.size--
 	for n := node.parent; n != nil; n = n.parent {
 		i++
-		if len(n.children) > 1 {
+		if len(n.children) >= 1 {
 			r := rs[len(rs)-i]
 			n.removeChild(r)
 			break
@@ -353,7 +353,7 @@ func collect(node *trieNode) []string {
 		n *trieNode
 		i int
 	)
-	keys := make([]string, 0, node.termCount)
+	keys := make([]string, 0, node.termCount+1)
 	nodes := make([]*trieNode, 1, len(node.children)+1)
 	nodes[0] = node
 	for l := len(nodes); l != 0; l = len(nodes) {
@@ -376,7 +376,7 @@ func collectValues(node *trieNode) []interface{} {
 		n *trieNode
 		i int
 	)
-	values := make([]interface{}, 0, node.termCount)
+	values := make([]interface{}, 0, node.termCount+1)
 	// keys := make([]string, 0, node.termCount)
 	nodes := make([]*trieNode, 1, len(node.children)+1)
 	nodes[0] = node
