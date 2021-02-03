@@ -408,7 +408,7 @@ func TestSupportChinese(t *testing.T) {
 		sort.Strings(actual)
 		sort.Strings(test.expected)
 		if len(actual) != test.length {
-			t.Errorf("Expected len(actual) to == %d for pre %s", test.length, test.pre)
+			t.Errorf("Expected len(actual) %d to == %d for pre %s", len(actual), test.length, test.pre)
 		}
 
 		for i, key := range actual {
@@ -629,14 +629,20 @@ func TestTrie_Remove(t *testing.T) {
 	trie := New()
 	input := []string{
 		"foo",
+		"foo1",
+		"foo",
+		"abc",
 	}
 
 	for _, key := range input {
 		trie.Add(key, true)
 	}
+	t.Logf("TRIE: %v", trie.All(""))
 	for _, key := range input {
 		trie.Remove(key)
+		t.Logf("TRIE: %v after %s removed", trie.All(""), key)
 	}
+
 	v, ok := trie.Find("foo")
 	if ok {
 		t.Errorf("The key (%v) removed exists", v)
@@ -645,31 +651,7 @@ func TestTrie_Remove(t *testing.T) {
 	if len(m) > 0 {
 		t.Errorf("The key (%v) removed exists", m)
 	}
-
-	// tests := []struct {
-	// 	name string
-	// 	key  string
-	// 	want map[string]interface{}
-	// }{
-	// 	{
-	// 		name: "FindAll",
-	// 		key:  "/interfaces/interface[name=1/2]",
-	// 		want: map[string]interface{}{
-	// 			"/interfaces":                                        true,
-	// 			"/interfaces/interface":                              true,
-	// 			"/interfaces/interface[name=1/2]":                    true,
-	// 			"/interfaces/interface[name=1/2]/state":              true,
-	// 			"/interfaces/interface[name=1/2]/state/oper-status":  true,
-	// 			"/interfaces/interface[name=1/2]/state/enabled":      true,
-	// 			"/interfaces/interface[name=1/2]/state/admin-status": true,
-	// 		},
-	// 	},
-	// }
-	// for _, tt := range tests {
-	// 	t.Run(tt.name, func(t *testing.T) {
-	// 		if got := trie.FindAll(tt.key); !reflect.DeepEqual(got, tt.want) {
-	// 			t.Errorf("Trie.FindAll() = %v, want %v", got, tt.want)
-	// 		}
-	// 	})
-	// }
+	if trie.Size() != 0 {
+		t.Errorf("Size error len(%d)", trie.Size())
+	}
 }

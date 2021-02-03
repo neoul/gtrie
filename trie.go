@@ -59,13 +59,21 @@ func (t *Trie) Size() int {
 // the caller.
 func (t *Trie) Add(key string, value interface{}) {
 	t.mu.Lock()
-
-	t.size++
+	defer t.mu.Unlock()
+	cnt := 1
 	runes := []rune(key)
+	// Remove the existent node
+	if node := findNode(t.root, runes); node != nil {
+		if node, ok := node.children[nul]; ok && node.term {
+			cnt = 0
+		}
+	}
+
+	t.size = t.size + cnt
 	bitmask := maskruneslice(runes)
 	node := t.root
 	node.mask |= bitmask
-	node.termCount++
+	node.termCount = node.termCount + cnt
 	for i := range runes {
 		r := runes[i]
 		bitmask = maskruneslice(runes[i:])
@@ -75,10 +83,9 @@ func (t *Trie) Add(key string, value interface{}) {
 		} else {
 			node = node.newChild(r, "", bitmask, nil, false)
 		}
-		node.termCount++
+		node.termCount = node.termCount + cnt
 	}
 	node = node.newChild(nul, key, 0, value, true)
-	t.mu.Unlock()
 }
 
 // Find finds and returns a value associated with `key`.
@@ -116,17 +123,49 @@ func (t *Trie) Remove(key string) {
 		rs   = []rune(key)
 		node = findNode(t.root, []rune(key))
 	)
-
+	if node == nil {
+		return
+	}
+	target, ok := node.children[nul]
+	if !ok || !target.term {
+		return
+	}
 	t.size--
-	for n := node.parent; n != nil; n = n.parent {
+	node.removeChild(nul)
+	for n := node; n.parent != nil; n = n.parent {
 		i++
-		if len(n.children) >= 1 {
+		if len(n.children) <= 0 {
 			r := rs[len(rs)-i]
-			n.removeChild(r)
-			break
+			// fmt.Printf("key %s, parent.val %c n.val %c r %c\n", target.path, n.parent.val, n.val, r)
+			n.parent.removeChild(r)
 		}
 	}
 }
+
+// // RemoveAll removes all keys matched with the input pre(fix) from the trie
+// func (t *Trie) RemoveAll(pre string) {
+// 	t.mu.Lock()
+// 	defer t.mu.Unlock()
+// 	var (
+// 		i    int
+// 		rs   = []rune(pre)
+// 		node = findNode(t.root, []rune(pre))
+// 	)
+// 	if node == nil {
+// 		return
+// 	}
+
+// 	// need to update size
+// 	t.size--
+// 	for n := node.parent; n != nil; n = n.parent {
+// 		i++
+// 		if len(n.children) >= 1 {
+// 			r := rs[len(rs)-i]
+// 			n.removeChild(r)
+// 			break
+// 		}
+// 	}
+// }
 
 // Keys returns all the keys currently stored and started with `pre(fix)` in the trie.
 func (t *Trie) Keys(pre string) []string {
@@ -376,7 +415,7 @@ func collect(node *trieNode) []string {
 		n *trieNode
 		i int
 	)
-	keys := make([]string, 0, node.termCount+1)
+	keys := make([]string, 0, node.termCount)
 	nodes := make([]*trieNode, 1, len(node.children)+1)
 	nodes[0] = node
 	for l := len(nodes); l != 0; l = len(nodes) {
@@ -399,8 +438,7 @@ func collectValues(node *trieNode) []interface{} {
 		n *trieNode
 		i int
 	)
-	values := make([]interface{}, 0, node.termCount+1)
-	// keys := make([]string, 0, node.termCount)
+	values := make([]interface{}, 0, node.termCount)
 	nodes := make([]*trieNode, 1, len(node.children)+1)
 	nodes[0] = node
 	for l := len(nodes); l != 0; l = len(nodes) {
@@ -423,7 +461,6 @@ func collectAll(node *trieNode) map[string]interface{} {
 		i int
 	)
 	m := make(map[string]interface{})
-	// keys := make([]string, 0, node.termCount)
 	nodes := make([]*trieNode, 1, len(node.children)+1)
 	nodes[0] = node
 	for l := len(nodes); l != 0; l = len(nodes) {
