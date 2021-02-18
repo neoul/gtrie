@@ -632,6 +632,7 @@ func TestTrie_Remove(t *testing.T) {
 		"foo1",
 		"foo",
 		"abc",
+		"f",
 	}
 
 	for _, key := range input {

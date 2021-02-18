@@ -120,6 +120,7 @@ func (t *Trie) Remove(key string) {
 	defer t.mu.Unlock()
 	var (
 		i    int
+		r    rune
 		rs   = []rune(key)
 		node = findNode(t.root, []rune(key))
 	)
@@ -130,17 +131,24 @@ func (t *Trie) Remove(key string) {
 	if !ok || !target.term {
 		return
 	}
+	target.parent = nil
+	target.meta = nil
 	t.size--
 	node.removeChild(nul)
-	for n := node; n.parent != nil; n = n.parent {
-		if len(n.children) > 0 {
-			break
+	for node.parent != nil {
+		node.termCount--
+		parent := node.parent
+		if len(node.children) <= 0 {
+			i++
+			r = rs[len(rs)-i]
+			parent.removeChild(r)
+			node.parent = nil
+			node.meta = nil
 		}
-		i++
-		r := rs[len(rs)-i]
 		// fmt.Printf("key %s, parent.val %c n.val %c r %c\n", target.path, n.parent.val, n.val, r)
-		n.parent.removeChild(r)
+		node = parent
 	}
+	node.termCount--
 }
 
 // // RemoveAll removes all keys matched with the input pre(fix) from the trie
@@ -370,7 +378,6 @@ func (n *trieNode) newChild(val rune, path string, bitmask uint64, meta interfac
 // removeChild removes the child
 func (n *trieNode) removeChild(r rune) {
 	delete(n.children, r)
-	n.termCount--
 	for nd := n.parent; nd != nil; nd = nd.parent {
 		nd.mask ^= nd.mask
 		nd.mask |= uint64(1) << uint64(nd.val-'a')
