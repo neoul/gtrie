@@ -18,7 +18,7 @@ t := trie.New()
 Add Keys with:
 
 ```Go
-// Add can take in meta information which can be stored with the key.
+// Add can take in data information which can be stored with the key.
 // i.e. you could store any information you would like to associate with
 // this particular key.
 t.Add("foobar", 1)
@@ -28,8 +28,8 @@ Find a key with:
 
 ```Go
 node, ok := t.Find("foobar")
-meta := node.Meta()
-// use meta with meta.(type)
+data := node.data()
+// use data with data.(type)
 ```
 
 Remove Keys with:
