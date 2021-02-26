@@ -1,68 +1,71 @@
-[![GoDoc](https://godoc.org/github.com/derekparker/trie?status.svg)](https://godoc.org/github.com/neoul/gtrie)
+[![GoDoc](https://godoc.org/github.com/neoul/gtrie?status.svg)](https://godoc.org/github.com/neoul/gtrie)
 
-# Trie
-Data structure and relevant algorithms for extremely fast prefix/fuzzy string searching.
+# gtrie.Trie
 
-Package gtrie is an implementation of an R-Way Trie data structure.
-This package supports more useful functions for the trie based on
-derekparker/trie (https://godoc.org/github.com/derekparker/trie).
+Data structure and relevant algorithms for extremely fast prefix/fuzzy string searching and longest prefix match searching or combinational search of them.
+
+Package gtrie is an implementation of an R-Way Trie data structure. This package supports more useful functions for the trie based on [derekparker/trie](https://godoc.org/github.com/derekparker/trie).
 
 ## Usage
 
-Create a Trie with:
+```go
 
-```Go
-t := trie.New()
+    // Create a trie
+    trie := gtrie.New()
+    input := []string{
+        "/interfaces",
+        "/interfaces/interface",
+        "/interfaces/interface[name=1/2]",
+        "/interfaces/interface[name=1/2]/state",
+        "/interfaces/interface[name=1/2]/state/oper-status",
+        "/interfaces/interface[name=1/2]/state/enabled",
+        "/interfaces/interface[name=1/1]/state/enabled",
+        "/interfaces/interface[name=1/2]/state/admin-status",
+        "/interfaces/interface[name=1/2]/state/counters",
+        "/interfaces/interface[name=1/3]",
+        "/interfaces/interface[name=1/3]/state",
+        "/interfaces/interface[name=1/3]/state/oper-status",
+        "/interfaces/interface[name=1/3]/state/enabled",
+        "/interfaces/interface[name=1/3]/state/enabled",
+        "/interfaces/interface[name=1/3]/state/admin-status",
+        "/interfaces/interface[name=1/3]/state/counters",
+        "/interfaces/interface/state/counters",
+    }
+
+    // Add keys with your data (value)
+    for _, key := range input {
+        trie.Add(key, true)
+    }
+
+    // Find - Find your data with a key.
+    pretty.Println(trie.Find("/interfaces/interface[name=1/3]"))
+
+    // FindByPrefix - Find all keys starting with `prefix` from the trie.
+    pretty.Println(trie.FindByPrefix("/interfaces/interface[name=1/2]/state"))
+
+    // FindByFuzzy - Find all keys by fuzzy search (Approximate string matching).
+    pretty.Println(trie.FindByFuzzy("/interfaces/interface/state"))
+
+    // FindLongestMatchingPrefix - Find a prefix key matching longestly with input `key`.
+    pretty.Println(trie.FindLongestMatchingPrefix("/interfaces/interface[name=1/3]/state/absss"))
+
+    // FindMatchingPrefix - Find all the matching prefixes against to the input `key`.
+    pretty.Println(trie.FindMatchingPrefix("/interfaces/interface[name=1/3]/state/absss"))
+
+    // Remove the key from the trie.
+    trie.Remove("/interfaces")
+    trie.Remove("/interfaces/interface")
+
+    // FindRelativeAll = FindByPrefix + FindByFuzzy + FindMatchingPrefix
+    m := trie.FindRelativeAll("/interfaces/interface/state")
+    pretty.Print(m)
+    if len(m) != 12 {
+        fmt.Printf("got result(%d), expect(12)", len(m))
+    }
+
+    // Clear all keys and inserted values.
+    trie.Clear()
 ```
-
-Add Keys with:
-
-```Go
-// Add can take in data information which can be stored with the key.
-// i.e. you could store any information you would like to associate with
-// this particular key.
-t.Add("foobar", 1)
-```
-
-Find a key with:
-
-```Go
-node, ok := t.Find("foobar")
-data := node.data()
-// use data with data.(type)
-```
-
-Remove Keys with:
-
-```Go
-t.Remove("foobar")
-```
-
-Prefix search with:
-
-```Go
-t.PrefixSearch("foo")
-```
-
-Fast test for valid prefix:
-
-```Go
-t.HasPrefix("foo")
-```
-
-Fuzzy search with:
-
-```Go
-t.FuzzySearch("fb")
-```
-
-## Contributing
-
-Fork this repo and run tests with:
-
-	go test
-
-Create a feature branch, write your tests and code and submit a pull request.
 
 ## License
 MIT

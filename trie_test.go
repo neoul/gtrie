@@ -105,7 +105,7 @@ func TestRemove(t *testing.T) {
 	}
 
 	trie.Remove("foosball")
-	keys := trie.Keys("")
+	keys := trie.Keys()
 
 	if len(keys) != 2 {
 		t.Errorf("Expected 2 keys got %d", len(keys))
@@ -117,7 +117,7 @@ func TestRemove(t *testing.T) {
 		}
 	}
 
-	keys = trie.FuzzySearch("foo")
+	keys = trie.FindByFuzzy("foo")
 	if len(keys) != 2 {
 		t.Errorf("Expected 2 keys got %d", len(keys))
 	}
@@ -146,9 +146,9 @@ func TestTrieKeys(t *testing.T) {
 				trie.Add(key, nil)
 			}
 
-			keys := trie.Keys("")
+			keys := trie.Keys()
 			if len(keys) != len(test.expectedKeys) {
-				t.Errorf("Expected %v keys, got %d, keys were: %v", len(test.expectedKeys), len(keys), trie.Keys(""))
+				t.Errorf("Expected %v keys, got %d, keys were: %v", len(test.expectedKeys), len(keys), trie.FindByPrefix(""))
 			}
 
 			sort.Strings(keys)
@@ -161,7 +161,7 @@ func TestTrieKeys(t *testing.T) {
 	}
 }
 
-func TestPrefixSearch(t *testing.T) {
+func TestFindByPrefix(t *testing.T) {
 	trie := New()
 	expected := []string{
 		"foo",
@@ -197,7 +197,7 @@ func TestPrefixSearch(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		actual := trie.PrefixSearch(test.pre)
+		actual := trie.FindByPrefix(test.pre)
 		sort.Strings(actual)
 		sort.Strings(test.expected)
 		if len(actual) != test.length {
@@ -211,10 +211,10 @@ func TestPrefixSearch(t *testing.T) {
 		}
 	}
 
-	trie.PrefixSearch("fsfsdfasdf")
+	trie.FindByPrefix("fsfsdfasdf")
 }
 
-func TestTrie_FindLongestMatch(t *testing.T) {
+func TestTrie_LongestPrefixMatch(t *testing.T) {
 	trie := New()
 	expected := []string{
 		"foo",
@@ -261,14 +261,14 @@ func TestTrie_FindLongestMatch(t *testing.T) {
 
 	for _, test := range tests {
 		t.Log("TEST input:", test.input)
-		output, ok := trie.FindLongestMatchedkey(test.input)
+		output, _, ok := trie.FindLongestMatchingPrefix(test.input)
 		if (test.ok != ok) || test.expected != output {
 			t.Errorf("ok %v output %s, expected %s for input %s", ok, output, test.expected, test.input)
 		}
 	}
 }
 
-func TestFuzzySearch(t *testing.T) {
+func TestFindByFuzzy(t *testing.T) {
 	setup := []string{
 		"foosball",
 		"football",
@@ -304,7 +304,7 @@ func TestFuzzySearch(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.partial, func(t *testing.T) {
-			actual := trie.FuzzySearch(test.partial)
+			actual := trie.FindByFuzzy(test.partial)
 			if len(actual) != test.length {
 				t.Errorf("Expected len(actual) to == %d, was %d for %s actual was %#v",
 					test.length, len(actual), test.partial, actual)
@@ -313,7 +313,7 @@ func TestFuzzySearch(t *testing.T) {
 	}
 }
 
-func TestFuzzySearchSorting(t *testing.T) {
+func TestFindByFuzzySorting(t *testing.T) {
 	trie := New()
 	setup := []string{
 		"foosball",
@@ -330,7 +330,7 @@ func TestFuzzySearchSorting(t *testing.T) {
 		trie.Add(key, nil)
 	}
 
-	actual := trie.FuzzySearch("fz")
+	actual := trie.FindByFuzzy("fz")
 	expected := []string{"bfrza", "foo/bart/baz.go"}
 
 	if len(actual) != len(expected) {
@@ -344,7 +344,7 @@ func TestFuzzySearchSorting(t *testing.T) {
 
 }
 
-func BenchmarkTieKeys(b *testing.B) {
+func BenchmarkKeys(b *testing.B) {
 	trie := New()
 	keys := []string{"bar", "foo", "baz", "bur", "zum", "burzum", "bark", "barcelona", "football", "foosball", "footlocker"}
 
@@ -354,27 +354,65 @@ func BenchmarkTieKeys(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		trie.Keys("")
+		trie.Keys()
 	}
 }
 
-func BenchmarkPrefixSearch(b *testing.B) {
+func BenchmarkValues(b *testing.B) {
+	trie := New()
+	keys := []string{"bar", "foo", "baz", "bur", "zum", "burzum", "bark", "barcelona", "football", "foosball", "footlocker"}
+
+	for _, key := range keys {
+		trie.Add(key, nil)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		trie.Values()
+	}
+}
+
+func BenchmarkAll(b *testing.B) {
+	trie := New()
+	keys := []string{"bar", "foo", "baz", "bur", "zum", "burzum", "bark", "barcelona", "football", "foosball", "footlocker"}
+
+	for _, key := range keys {
+		trie.Add(key, nil)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		trie.All()
+	}
+}
+
+func BenchmarkFindByPrefix(b *testing.B) {
 	trie := New()
 	addFromFile(trie, "/usr/share/dict/words")
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = trie.PrefixSearch("fo")
+		_ = trie.FindByPrefix("fo")
 	}
 }
 
-func BenchmarkFuzzySearch(b *testing.B) {
+func BenchmarkFindByFuzzy(b *testing.B) {
 	trie := New()
 	addFromFile(trie, "/usr/share/dict/words")
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = trie.FuzzySearch("fs")
+		_ = trie.FindByFuzzy("fs")
+	}
+}
+
+func BenchmarkFindMatchingPrefix(b *testing.B) {
+	trie := New()
+	addFromFile(trie, "/usr/share/dict/words")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = trie.FindByPrefix("application")
 	}
 }
 
@@ -404,7 +442,7 @@ func TestSupportChinese(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		actual := trie.PrefixSearch(test.pre)
+		actual := trie.FindByPrefix(test.pre)
 		sort.Strings(actual)
 		sort.Strings(test.expected)
 		if len(actual) != test.length {
@@ -454,7 +492,7 @@ func BenchmarkAddRemove(b *testing.B) {
 	}
 }
 
-func TestTrie_All(t *testing.T) {
+func TestTrie_FindByPrefixAll(t *testing.T) {
 	trie := New()
 	expected := []string{
 		"foo",
@@ -486,7 +524,7 @@ func TestTrie_All(t *testing.T) {
 		want map[string]interface{}
 	}{
 		{
-			name: "All",
+			name: "FindByPrefixAll",
 			pre:  "/interfaces",
 			want: map[string]interface{}{
 				"/interfaces":                                        true,
@@ -502,14 +540,14 @@ func TestTrie_All(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := trie.All(tt.pre); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Trie.All() = %v, want %v", got, tt.want)
+			if got := trie.FindByPrefixAll(tt.pre); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Trie.FindByPrefixAll() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestTrie_FindMatchedKey(t *testing.T) {
+func TestTrie_FindMatchingPrefix(t *testing.T) {
 	trie := New()
 	expected := []string{
 		"foo",
@@ -535,6 +573,7 @@ func TestTrie_FindMatchedKey(t *testing.T) {
 	for _, key := range expected {
 		trie.Add(key, true)
 	}
+	// fmt.Println(trie.FindMatchingPrefix(tt.key))
 
 	tests := []struct {
 		name string
@@ -542,7 +581,7 @@ func TestTrie_FindMatchedKey(t *testing.T) {
 		want []string
 	}{
 		{
-			name: "FindMatchedKey",
+			name: "FindMatchingPrefix",
 			key:  "/interfaces/interface[name=1/2]/",
 			want: []string{
 				"/interfaces",
@@ -551,7 +590,7 @@ func TestTrie_FindMatchedKey(t *testing.T) {
 			},
 		},
 		{
-			name: "FindMatchedKey",
+			name: "FindMatchingPrefix",
 			key:  "/interfaces/interface[name=1/2]/state",
 			want: []string{
 				"/interfaces",
@@ -563,8 +602,8 @@ func TestTrie_FindMatchedKey(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got, ok := trie.FindMatchedKey(tt.key); !ok || !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Trie.All() = %v, want %v", got, tt.want)
+			if got, ok := trie.FindMatchingPrefix(tt.key); !ok || !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Trie.FindMatchingPrefix() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -638,21 +677,61 @@ func TestTrie_Remove(t *testing.T) {
 	for _, key := range input {
 		trie.Add(key, true)
 	}
-	t.Logf("TRIE: %v", trie.All(""))
+	t.Logf("TRIE: %v", trie.FindByPrefixAll(""))
 	for _, key := range input {
 		trie.Remove(key)
-		t.Logf("TRIE: %v after %s removed", trie.All(""), key)
+		t.Logf("TRIE: %v after %s removed", trie.FindByPrefixAll(""), key)
 	}
 
 	v, ok := trie.Find("foo")
 	if ok {
 		t.Errorf("The key (%v) removed exists", v)
 	}
-	m := trie.All("")
+	m := trie.FindByPrefixAll("")
 	if len(m) > 0 {
 		t.Errorf("The key (%v) removed exists", m)
 	}
 	if trie.Size() != 0 {
 		t.Errorf("Size error len(%d)", trie.Size())
+	}
+}
+
+func TestTrie_FindRelativeAll(t *testing.T) {
+	trie := New()
+	input := []string{
+		"/interfaces",
+		"/interfaces/interface",
+		"/interfaces/interface[name=1/2]",
+		"/interfaces/interface[name=1/2]/state",
+		"/interfaces/interface[name=1/2]/state/oper-status",
+		"/interfaces/interface[name=1/2]/state/enabled",
+		"/interfaces/interface[name=1/1]/state/enabled",
+		"/interfaces/interface[name=1/2]/state/admin-status",
+		"/interfaces/interface[name=1/2]/state/counters",
+		"/interfaces/interface[name=1/3]",
+		"/interfaces/interface[name=1/3]/state",
+		"/interfaces/interface[name=1/3]/state/oper-status",
+		"/interfaces/interface[name=1/3]/state/enabled",
+		"/interfaces/interface[name=1/3]/state/enabled",
+		"/interfaces/interface[name=1/3]/state/admin-status",
+		"/interfaces/interface[name=1/3]/state/counters",
+		"/interfaces/interface/state/counters",
+	}
+
+	for _, key := range input {
+		trie.Add(key, true)
+	}
+	m := trie.FindRelativeAll("/interfaces/interface[name=1/2]")
+	// pretty.Print(m)
+	if len(m) != 8 {
+		t.Errorf("got result(%d), expect(12)", len(m))
+	}
+
+	trie.Remove("/interfaces")
+	trie.Remove("/interfaces/interface")
+	m = trie.FindRelativeAll("/interfaces/interface/state")
+	// pretty.Print(m)
+	if len(m) != 12 {
+		t.Errorf("got result(%d), expect(12)", len(m))
 	}
 }
